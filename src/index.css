@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Avenir Next", Avenir, "Nunito Sans", ui-rounded, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 2px;
+}
+
+@media (max-height: 720px) {
+  .calculator-key {
+    height: 3.35rem;
+  }
+}
