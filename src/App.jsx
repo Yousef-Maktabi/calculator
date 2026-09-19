@@ -182,7 +182,7 @@ export default function App() {
         <h1 className="mb-6 text-center text-2xl font-bold leading-tight tracking-[-0.025em] text-white drop-shadow-sm">
           A pink calculator for Dr. Arghavan,
           <span className="mt-1 block text-sm font-medium tracking-normal text-[#ffe0e9]">
-            as we discussed :)
+            as I promised :)
           </span>
         </h1>
 
