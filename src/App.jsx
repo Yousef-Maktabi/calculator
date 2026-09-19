@@ -193,9 +193,6 @@ export default function App() {
           <div className="overflow-hidden rounded-[1.65rem] bg-[#ffe7ee]">
             <div className="flex min-h-52 flex-col justify-end px-7 pb-6 pt-8 text-right">
               <div className="mb-5 flex items-center justify-between">
-                <span className="rounded-full bg-[#fbd1de] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-[#b13262]">
-                  Blush
-                </span>
                 <button
                   type="button"
                   onClick={backspace}
