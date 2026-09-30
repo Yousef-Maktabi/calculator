@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Check,
   Clock3,
+  Copy,
   Delete as Backspace,
   Trash2,
   X,
@@ -59,6 +61,26 @@ function loadHistory() {
   }
 }
 
+async function writeToClipboard(value) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = value;
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  try {
+    if (!document.execCommand("copy")) throw new Error("Copy failed");
+  } finally {
+    textArea.remove();
+  }
+}
+
 function tidyNumber(value) {
   if (!Number.isFinite(value)) return "Error";
   const rounded = Number.parseFloat(value.toPrecision(12));
@@ -80,6 +102,7 @@ export default function App() {
   const [waitingForOperand, setWaitingForOperand] = useState(false);
   const [history, setHistory] = useState(loadHistory);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("idle");
 
   useEffect(() => {
     try {
@@ -88,6 +111,12 @@ export default function App() {
       // The calculator still works when storage is unavailable or full.
     }
   }, [history]);
+
+  useEffect(() => {
+    if (copyStatus === "idle") return undefined;
+    const timeout = window.setTimeout(() => setCopyStatus("idle"), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [copyStatus]);
 
   const calculate = useCallback(
     (left, right, nextOperator = operator) => {
@@ -194,6 +223,17 @@ export default function App() {
     setIsHistoryOpen(false);
   }, []);
 
+  const copyResult = useCallback(async () => {
+    if (display === "Error") return;
+
+    try {
+      await writeToClipboard(formatDisplay(display));
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
+  }, [display]);
+
   const handleAction = useCallback(
     (key) => {
       if (key.type === "number") return inputDigit(key.label);
@@ -260,20 +300,43 @@ export default function App() {
                 >
                   <Backspace size={19} strokeWidth={1.8} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsHistoryOpen((current) => !current)}
-                  className="grid size-9 place-items-center rounded-full text-[#ad4168] transition hover:bg-white/70 active:scale-95"
-                  aria-label={isHistoryOpen ? "Close calculation history" : "Open calculation history"}
-                  aria-expanded={isHistoryOpen}
-                  aria-controls="calculation-history"
-                >
-                  {isHistoryOpen ? (
-                    <X size={19} strokeWidth={1.8} />
-                  ) : (
-                    <Clock3 size={19} strokeWidth={1.8} />
-                  )}
-                </button>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={`mr-1 text-xs font-semibold transition-opacity ${
+                      copyStatus === "idle" ? "opacity-0" : "opacity-100"
+                    } ${copyStatus === "failed" ? "text-[#a52a52]" : "text-[#7d3150]"}`}
+                    aria-live="polite"
+                  >
+                    {copyStatus === "failed" ? "Copy failed" : "Copied!"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyResult}
+                    disabled={display === "Error"}
+                    className="grid size-9 place-items-center rounded-full text-[#ad4168] transition hover:bg-white/70 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label={copyStatus === "copied" ? "Result copied" : "Copy result"}
+                  >
+                    {copyStatus === "copied" ? (
+                      <Check size={19} strokeWidth={2} />
+                    ) : (
+                      <Copy size={18} strokeWidth={1.8} />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsHistoryOpen((current) => !current)}
+                    className="grid size-9 place-items-center rounded-full text-[#ad4168] transition hover:bg-white/70 active:scale-95"
+                    aria-label={isHistoryOpen ? "Close calculation history" : "Open calculation history"}
+                    aria-expanded={isHistoryOpen}
+                    aria-controls="calculation-history"
+                  >
+                    {isHistoryOpen ? (
+                      <X size={19} strokeWidth={1.8} />
+                    ) : (
+                      <Clock3 size={19} strokeWidth={1.8} />
+                    )}
+                  </button>
+                </div>
               </div>
               <p
                 className="h-6 truncate text-sm font-medium tracking-wide text-[#b5708a]"
