@@ -37,6 +37,17 @@ const keys = [
   { label: "=", type: "equals", action: "equals" },
 ];
 
+const memoryKeys = [
+  { label: "MC", action: "clear", ariaLabel: "Clear memory" },
+  { label: "MR", action: "recall", ariaLabel: "Recall memory" },
+  { label: "M+", action: "add", ariaLabel: "Add displayed value to memory" },
+  {
+    label: "M−",
+    action: "subtract",
+    ariaLabel: "Subtract displayed value from memory",
+  },
+];
+
 const HISTORY_STORAGE_KEY = "pink-calculator-history";
 
 function loadHistory() {
@@ -103,6 +114,8 @@ export default function App() {
   const [history, setHistory] = useState(loadHistory);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState("idle");
+  const [memory, setMemory] = useState(0);
+  const [hasMemory, setHasMemory] = useState(false);
 
   useEffect(() => {
     try {
@@ -234,6 +247,32 @@ export default function App() {
     }
   }, [display]);
 
+  const handleMemoryAction = useCallback(
+    (action) => {
+      if (action === "clear") {
+        setMemory(0);
+        setHasMemory(false);
+        return;
+      }
+
+      if (action === "recall") {
+        if (!hasMemory) return;
+        setDisplay(tidyNumber(memory));
+        if (operator === null) setExpression("Memory recalled");
+        setWaitingForOperand(false);
+        return;
+      }
+
+      if (display === "Error") return;
+      const inputValue = Number(display);
+      setMemory((current) =>
+        action === "add" ? current + inputValue : current - inputValue,
+      );
+      setHasMemory(true);
+    },
+    [display, hasMemory, memory, operator],
+  );
+
   const handleAction = useCallback(
     (key) => {
       if (key.type === "number") return inputDigit(key.label);
@@ -292,14 +331,25 @@ export default function App() {
           <div className="overflow-hidden rounded-[1.65rem] bg-[#ffe7ee]">
             <div className="flex min-h-52 flex-col justify-end px-7 pb-6 pt-8 text-right">
               <div className="mb-5 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={backspace}
-                  className="grid size-9 place-items-center rounded-full text-[#ad4168] transition hover:bg-white/70 active:scale-95"
-                  aria-label="Delete last digit"
-                >
-                  <Backspace size={19} strokeWidth={1.8} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={backspace}
+                    className="grid size-9 place-items-center rounded-full text-[#ad4168] transition hover:bg-white/70 active:scale-95"
+                    aria-label="Delete last digit"
+                  >
+                    <Backspace size={19} strokeWidth={1.8} />
+                  </button>
+                  {hasMemory && (
+                    <span
+                      className="grid size-6 place-items-center rounded-full bg-[#ad4168] text-xs font-bold text-white"
+                      title={`Memory: ${formatDisplay(tidyNumber(memory))}`}
+                      aria-label={`Memory contains ${formatDisplay(tidyNumber(memory))}`}
+                    >
+                      M
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-1">
                   <span
                     className={`mr-1 text-xs font-semibold transition-opacity ${
@@ -407,6 +457,26 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-4 gap-2.5 rounded-t-[1.75rem] bg-[#8e2351] p-4">
+              {memoryKeys.map((key) => {
+                const isDisabled =
+                  ((key.action === "clear" || key.action === "recall") &&
+                    !hasMemory) ||
+                  ((key.action === "add" || key.action === "subtract") &&
+                    display === "Error");
+
+                return (
+                  <button
+                    key={key.label}
+                    type="button"
+                    onClick={() => handleMemoryAction(key.action)}
+                    disabled={isDisabled}
+                    className="h-9 rounded-xl bg-[#741c45] text-sm font-bold text-[#ffdce7] shadow-[0_3px_0_#571330] transition hover:bg-[#7f234b] active:translate-y-0.5 active:shadow-none disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label={key.ariaLabel}
+                  >
+                    {key.label}
+                  </button>
+                );
+              })}
               {keys.map((key) => (
                 <button
                   key={key.label}
