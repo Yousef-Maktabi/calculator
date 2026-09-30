@@ -4,6 +4,7 @@ import {
   Clock3,
   Copy,
   Delete as Backspace,
+  Share2,
   Trash2,
   X,
 } from "lucide-react";
@@ -114,8 +115,10 @@ export default function App() {
   const [history, setHistory] = useState(loadHistory);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [copyStatus, setCopyStatus] = useState("idle");
+  const [shareStatus, setShareStatus] = useState("idle");
   const [memory, setMemory] = useState(0);
   const [hasMemory, setHasMemory] = useState(false);
+  const [lastOperation, setLastOperation] = useState(null);
 
   useEffect(() => {
     try {
@@ -130,6 +133,12 @@ export default function App() {
     const timeout = window.setTimeout(() => setCopyStatus("idle"), 1800);
     return () => window.clearTimeout(timeout);
   }, [copyStatus]);
+
+  useEffect(() => {
+    if (shareStatus === "idle") return undefined;
+    const timeout = window.setTimeout(() => setShareStatus("idle"), 1800);
+    return () => window.clearTimeout(timeout);
+  }, [shareStatus]);
 
   const calculate = useCallback(
     (left, right, nextOperator = operator) => {
@@ -146,6 +155,7 @@ export default function App() {
     setOperator(null);
     setExpression("");
     setWaitingForOperand(false);
+    setLastOperation(null);
   }, []);
 
   const inputDigit = useCallback(
@@ -153,6 +163,7 @@ export default function App() {
       if (display === "Error" || waitingForOperand) {
         setDisplay(digit === "." ? "0." : digit);
         setWaitingForOperand(false);
+        if (operator === null) setLastOperation(null);
         return;
       }
       if (digit === "." && display.includes(".")) return;
@@ -161,7 +172,7 @@ export default function App() {
         current === "0" && digit !== "." ? digit : current + digit,
       );
     },
-    [display, waitingForOperand],
+    [display, operator, waitingForOperand],
   );
 
   const chooseOperator = useCallback(
@@ -200,12 +211,19 @@ export default function App() {
   );
 
   const equals = useCallback(() => {
-    if (operator === null || storedValue === null || display === "Error")
-      return;
-    const inputValue = Number(display);
-    const result = calculate(storedValue, inputValue);
+    if (display === "Error") return;
+
+    const hasPendingOperation = operator !== null && storedValue !== null;
+    if (!hasPendingOperation && lastOperation === null) return;
+
+    const leftValue = hasPendingOperation ? storedValue : Number(display);
+    const rightValue = hasPendingOperation
+      ? Number(display)
+      : lastOperation.operand;
+    const operation = hasPendingOperation ? operator : lastOperation.operator;
+    const result = calculate(leftValue, rightValue, operation);
     const nextDisplay = tidyNumber(result);
-    const completedExpression = `${formatDisplay(String(storedValue))} ${operator} ${formatDisplay(display)}`;
+    const completedExpression = `${formatDisplay(String(leftValue))} ${operation} ${formatDisplay(String(rightValue))}`;
     setExpression(
       nextDisplay === "Error"
         ? "Cannot divide by zero"
@@ -221,11 +239,14 @@ export default function App() {
         },
         ...current,
       ].slice(0, 20));
+      setLastOperation({ operator: operation, operand: rightValue });
+    } else {
+      setLastOperation(null);
     }
     setStoredValue(null);
     setOperator(null);
     setWaitingForOperand(true);
-  }, [calculate, display, operator, storedValue]);
+  }, [calculate, display, lastOperation, operator, storedValue]);
 
   const reuseHistoryResult = useCallback((item) => {
     setDisplay(item.result);
@@ -233,6 +254,7 @@ export default function App() {
     setStoredValue(null);
     setOperator(null);
     setWaitingForOperand(true);
+    setLastOperation(null);
     setIsHistoryOpen(false);
   }, []);
 
@@ -241,11 +263,44 @@ export default function App() {
 
     try {
       await writeToClipboard(formatDisplay(display));
+      setShareStatus("idle");
       setCopyStatus("copied");
     } catch {
+      setShareStatus("idle");
       setCopyStatus("failed");
     }
   }, [display]);
+
+  const shareResult = useCallback(async () => {
+    if (display === "Error") return;
+
+    const formattedResult = formatDisplay(display);
+    const shareText = expression.trim().endsWith("=")
+      ? `${expression} ${formattedResult}`
+      : `Result: ${formattedResult}`;
+
+    setCopyStatus("idle");
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Pink calculator result",
+          text: shareText,
+        });
+        setShareStatus("shared");
+      } catch (error) {
+        if (error?.name !== "AbortError") setShareStatus("failed");
+      }
+      return;
+    }
+
+    try {
+      await writeToClipboard(shareText);
+      setShareStatus("copied");
+    } catch {
+      setShareStatus("failed");
+    }
+  }, [display, expression]);
 
   const handleMemoryAction = useCallback(
     (action) => {
@@ -258,7 +313,10 @@ export default function App() {
       if (action === "recall") {
         if (!hasMemory) return;
         setDisplay(tidyNumber(memory));
-        if (operator === null) setExpression("Memory recalled");
+        if (operator === null) {
+          setExpression("Memory recalled");
+          setLastOperation(null);
+        }
         setWaitingForOperand(false);
         return;
       }
@@ -353,11 +411,21 @@ export default function App() {
                 <div className="flex items-center gap-1">
                   <span
                     className={`mr-1 text-xs font-semibold transition-opacity ${
-                      copyStatus === "idle" ? "opacity-0" : "opacity-100"
-                    } ${copyStatus === "failed" ? "text-[#a52a52]" : "text-[#7d3150]"}`}
+                      copyStatus === "idle" && shareStatus === "idle"
+                        ? "opacity-0"
+                        : "opacity-100"
+                    } ${copyStatus === "failed" || shareStatus === "failed" ? "text-[#a52a52]" : "text-[#7d3150]"}`}
                     aria-live="polite"
                   >
-                    {copyStatus === "failed" ? "Copy failed" : "Copied!"}
+                    {shareStatus === "shared"
+                      ? "Shared!"
+                      : shareStatus === "copied"
+                        ? "Copied to share!"
+                        : shareStatus === "failed"
+                          ? "Share failed"
+                          : copyStatus === "failed"
+                            ? "Copy failed"
+                            : "Copied!"}
                   </span>
                   <button
                     type="button"
@@ -371,6 +439,15 @@ export default function App() {
                     ) : (
                       <Copy size={18} strokeWidth={1.8} />
                     )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={shareResult}
+                    disabled={display === "Error"}
+                    className="grid size-9 place-items-center rounded-full text-[#ad4168] transition hover:bg-white/70 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Share result"
+                  >
+                    <Share2 size={18} strokeWidth={1.8} />
                   </button>
                   <button
                     type="button"
