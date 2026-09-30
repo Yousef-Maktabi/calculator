@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Delete as Backspace } from "lucide-react";
+import {
+  Clock3,
+  Delete as Backspace,
+  Trash2,
+  X,
+} from "lucide-react";
 
 const operations = {
   "+": (a, b) => a + b,
@@ -30,6 +35,30 @@ const keys = [
   { label: "=", type: "equals", action: "equals" },
 ];
 
+const HISTORY_STORAGE_KEY = "pink-calculator-history";
+
+function loadHistory() {
+  try {
+    const savedHistory = JSON.parse(
+      window.localStorage.getItem(HISTORY_STORAGE_KEY) ?? "[]",
+    );
+
+    if (!Array.isArray(savedHistory)) return [];
+
+    return savedHistory
+      .filter(
+        (item) =>
+          item &&
+          typeof item.id === "string" &&
+          typeof item.expression === "string" &&
+          typeof item.result === "string",
+      )
+      .slice(0, 20);
+  } catch {
+    return [];
+  }
+}
+
 function tidyNumber(value) {
   if (!Number.isFinite(value)) return "Error";
   const rounded = Number.parseFloat(value.toPrecision(12));
@@ -49,6 +78,16 @@ export default function App() {
   const [operator, setOperator] = useState(null);
   const [expression, setExpression] = useState("");
   const [waitingForOperand, setWaitingForOperand] = useState(false);
+  const [history, setHistory] = useState(loadHistory);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    } catch {
+      // The calculator still works when storage is unavailable or full.
+    }
+  }, [history]);
 
   const calculate = useCallback(
     (left, right, nextOperator = operator) => {
@@ -124,16 +163,36 @@ export default function App() {
     const inputValue = Number(display);
     const result = calculate(storedValue, inputValue);
     const nextDisplay = tidyNumber(result);
+    const completedExpression = `${formatDisplay(String(storedValue))} ${operator} ${formatDisplay(display)}`;
     setExpression(
       nextDisplay === "Error"
         ? "Cannot divide by zero"
-        : `${formatDisplay(String(storedValue))} ${operator} ${formatDisplay(display)} =`,
+        : `${completedExpression} =`,
     );
     setDisplay(nextDisplay);
+    if (nextDisplay !== "Error") {
+      setHistory((current) => [
+        {
+          id: `${Date.now()}-${current.length}`,
+          expression: completedExpression,
+          result: nextDisplay,
+        },
+        ...current,
+      ].slice(0, 20));
+    }
     setStoredValue(null);
     setOperator(null);
     setWaitingForOperand(true);
   }, [calculate, display, operator, storedValue]);
+
+  const reuseHistoryResult = useCallback((item) => {
+    setDisplay(item.result);
+    setExpression(`${item.expression} =`);
+    setStoredValue(null);
+    setOperator(null);
+    setWaitingForOperand(true);
+    setIsHistoryOpen(false);
+  }, []);
 
   const handleAction = useCallback(
     (key) => {
@@ -201,6 +260,20 @@ export default function App() {
                 >
                   <Backspace size={19} strokeWidth={1.8} />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryOpen((current) => !current)}
+                  className="grid size-9 place-items-center rounded-full text-[#ad4168] transition hover:bg-white/70 active:scale-95"
+                  aria-label={isHistoryOpen ? "Close calculation history" : "Open calculation history"}
+                  aria-expanded={isHistoryOpen}
+                  aria-controls="calculation-history"
+                >
+                  {isHistoryOpen ? (
+                    <X size={19} strokeWidth={1.8} />
+                  ) : (
+                    <Clock3 size={19} strokeWidth={1.8} />
+                  )}
+                </button>
               </div>
               <p
                 className="h-6 truncate text-sm font-medium tracking-wide text-[#b5708a]"
@@ -214,6 +287,60 @@ export default function App() {
               >
                 {formatDisplay(display)}
               </output>
+            </div>
+
+            <div
+              id="calculation-history"
+              className={`grid bg-[#fbd6e1] transition-[grid-template-rows] duration-300 ease-out ${
+                isHistoryOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              }`}
+              aria-hidden={!isHistoryOpen}
+            >
+              <div className="overflow-hidden">
+                <div className="border-t border-[#eeb7c8] px-5 pb-4 pt-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="text-sm font-bold text-[#6f2441]">
+                      Calculation history
+                    </h2>
+                    {history.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setHistory([])}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-[#ad4168] transition hover:bg-white/60"
+                        aria-label="Clear calculation history"
+                      >
+                        <Trash2 size={14} strokeWidth={1.8} />
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  {history.length === 0 ? (
+                    <p className="py-5 text-center text-sm text-[#a7667e]">
+                      Your completed calculations will appear here.
+                    </p>
+                  ) : (
+                    <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
+                      {history.map((item) => (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => reuseHistoryResult(item)}
+                            className="w-full rounded-xl bg-white/55 px-3 py-2 text-right transition hover:bg-white/90 active:scale-[0.99]"
+                            aria-label={`Reuse result ${formatDisplay(item.result)} from ${item.expression}`}
+                          >
+                            <span className="block truncate text-xs text-[#a7667e]">
+                              {item.expression} =
+                            </span>
+                            <span className="mt-0.5 block truncate text-lg font-bold text-[#641d3a]">
+                              {formatDisplay(item.result)}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-4 gap-2.5 rounded-t-[1.75rem] bg-[#8e2351] p-4">
