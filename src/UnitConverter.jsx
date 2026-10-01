@@ -56,9 +56,24 @@ const categories = {
     label: "Area",
     units: [
       { id: "square-meter", label: "Square meters", symbol: "m²", factor: 1 },
-      { id: "square-kilometer", label: "Square kilometers", symbol: "km²", factor: 1000000 },
-      { id: "square-foot", label: "Square feet", symbol: "ft²", factor: 0.09290304 },
-      { id: "square-yard", label: "Square yards", symbol: "yd²", factor: 0.83612736 },
+      {
+        id: "square-kilometer",
+        label: "Square kilometers",
+        symbol: "km²",
+        factor: 1000000,
+      },
+      {
+        id: "square-foot",
+        label: "Square feet",
+        symbol: "ft²",
+        factor: 0.09290304,
+      },
+      {
+        id: "square-yard",
+        label: "Square yards",
+        symbol: "yd²",
+        factor: 0.83612736,
+      },
       { id: "acre", label: "Acres", symbol: "ac", factor: 4046.8564224 },
       { id: "hectare", label: "Hectares", symbol: "ha", factor: 10000 },
     ],
@@ -69,10 +84,25 @@ const categories = {
       { id: "milliliter", label: "Milliliters", symbol: "mL", factor: 0.001 },
       { id: "liter", label: "Liters", symbol: "L", factor: 1 },
       { id: "cubic-meter", label: "Cubic meters", symbol: "m³", factor: 1000 },
-      { id: "teaspoon", label: "Teaspoons (US)", symbol: "tsp", factor: 0.00492892159375 },
-      { id: "tablespoon", label: "Tablespoons (US)", symbol: "tbsp", factor: 0.01478676478125 },
+      {
+        id: "teaspoon",
+        label: "Teaspoons (US)",
+        symbol: "tsp",
+        factor: 0.00492892159375,
+      },
+      {
+        id: "tablespoon",
+        label: "Tablespoons (US)",
+        symbol: "tbsp",
+        factor: 0.01478676478125,
+      },
       { id: "cup", label: "Cups (US)", symbol: "cup", factor: 0.2365882365 },
-      { id: "gallon", label: "Gallons (US)", symbol: "gal", factor: 3.785411784 },
+      {
+        id: "gallon",
+        label: "Gallons (US)",
+        symbol: "gal",
+        factor: 3.785411784,
+      },
     ],
   },
   time: {
@@ -180,7 +210,10 @@ export default function UnitConverter() {
   return (
     <div className="rounded-[1.65rem] bg-[#ffe7ee]">
       <div className="px-5 pb-6 pt-7">
-        <label className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-[#a75c77]" htmlFor="conversion-category">
+        <label
+          className="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-[#a75c77]"
+          htmlFor="conversion-category"
+        >
           Measurement
         </label>
         <select
@@ -190,12 +223,17 @@ export default function UnitConverter() {
           className="w-full rounded-2xl border border-[#eeb7c8] bg-white/70 px-4 py-3 text-base font-bold text-[#641d3a] outline-none transition focus:border-[#ad4168] focus:ring-2 focus:ring-[#f4a7bf]"
         >
           {Object.entries(categories).map(([id, item]) => (
-            <option key={id} value={id}>{item.label}</option>
+            <option key={id} value={id}>
+              {item.label}
+            </option>
           ))}
         </select>
 
         <div className="mt-5 rounded-2xl bg-white/65 p-4">
-          <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#a75c77]" htmlFor="from-value">
+          <label
+            className="block text-xs font-bold uppercase tracking-[0.14em] text-[#a75c77]"
+            htmlFor="from-value"
+          >
             From
           </label>
           <div className="mt-2 flex items-center gap-3">
@@ -221,13 +259,15 @@ export default function UnitConverter() {
               className="max-w-36 rounded-xl border border-[#ecc0ce] bg-[#ffe7ee] px-3 py-2 font-bold text-[#762044] outline-none focus:ring-2 focus:ring-[#f4a7bf]"
             >
               {category.units.map((unit) => (
-                <option key={unit.id} value={unit.id}>{unit.label}</option>
+                <option key={unit.id} value={unit.id}>
+                  {unit.label}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
-        <div className="relative flex h-10 items-center justify-center">
+        <div className="relative flex h-10 items-center justify-center my-4">
           <div className="absolute h-px w-full bg-[#eeb7c8]" />
           <button
             type="button"
@@ -241,7 +281,9 @@ export default function UnitConverter() {
 
         <div className="rounded-2xl bg-[#fbd6e1] p-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#a75c77]">To</span>
+            <span className="text-xs font-bold uppercase tracking-[0.14em] text-[#a75c77]">
+              To
+            </span>
             <button
               type="button"
               onClick={copyResult}
@@ -254,7 +296,10 @@ export default function UnitConverter() {
             </button>
           </div>
           <div className="mt-2 flex items-center gap-3">
-            <output className="min-w-0 flex-1 truncate text-3xl font-semibold tracking-[-0.04em] text-[#54142f]" aria-live="polite">
+            <output
+              className="min-w-0 flex-1 truncate text-3xl font-semibold tracking-[-0.04em] text-[#54142f]"
+              aria-live="polite"
+            >
               {formattedResult}
             </output>
             <select
@@ -267,7 +312,9 @@ export default function UnitConverter() {
               className="max-w-36 rounded-xl border border-[#ecc0ce] bg-[#ffe7ee] px-3 py-2 font-bold text-[#762044] outline-none focus:ring-2 focus:ring-[#f4a7bf]"
             >
               {category.units.map((unit) => (
-                <option key={unit.id} value={unit.id}>{unit.label}</option>
+                <option key={unit.id} value={unit.id}>
+                  {unit.label}
+                </option>
               ))}
             </select>
           </div>
